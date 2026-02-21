@@ -20,6 +20,7 @@ const categories = [
 ];
 
 export default function CountrySelector() {
+    // --- States ---
     const [selectedCountry, setSelectedCountry] = useState("us");
     const [selectedCategory, setSelectedCategory] = useState("");
     const [startDate, setStartDate] = useState("");
@@ -28,8 +29,22 @@ export default function CountrySelector() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // --- Pagination States ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const limit = 12; // প্রতি পেজে কয়টি কার্ড দেখাবে
+
     const isFetchingFresh = useRef(false);
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URI || "http://localhost:4000";
+
+    // --- Reset Function ---
+    const resetFilters = () => {
+        setSelectedCountry("us");
+        setSelectedCategory("");
+        setStartDate("");
+        setEndDate("");
+        setCurrentPage(1);
+    };
 
     const fetchNewsFromBackend = useCallback(async (skipManual = false) => {
         setLoading(true);
@@ -40,13 +55,17 @@ export default function CountrySelector() {
                 category: selectedCategory || undefined,
                 startDate: startDate || undefined,
                 endDate: endDate || undefined,
+                page: currentPage,
+                limit: limit
             };
 
             const response = await axios.get(`${backendUrl}/api/news`, { params: queryParams });
 
             if (response.data.success) {
                 const results = response.data.results || [];
-                if (results.length === 0 && !skipManual && !isFetchingFresh.current) {
+                setTotalPages(response.data.totalPages || 1);
+
+                if (results.length === 0 && currentPage === 1 && !skipManual && !isFetchingFresh.current) {
                     await handleManualFetch();
                 } else {
                     setArticles(results);
@@ -54,11 +73,13 @@ export default function CountrySelector() {
                 }
             }
         } catch (err) {
-            setError(err.response?.status === 429 ? "Rate limit reached. Showing cached news." : "Failed to sync news.");
+            setError(err.response?.status === 429 ? "Rate limit reached." : "Failed to sync news.");
         } finally {
             setLoading(false);
+            // পেজ চেঞ্জ হলে স্মুথলি উপরে স্ক্রল করবে
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    }, [selectedCountry, selectedCategory, startDate, endDate]);
+    }, [selectedCountry, selectedCategory, startDate, endDate, currentPage]);
 
     const handleManualFetch = async () => {
         if (isFetchingFresh.current) return;
@@ -78,8 +99,13 @@ export default function CountrySelector() {
         fetchNewsFromBackend();
     }, [fetchNewsFromBackend]);
 
+    // ফিল্টার পরিবর্তন হলে পেজ ১-এ সেট হবে
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedCountry, selectedCategory, startDate, endDate]);
+
     return (
-        <div className="min-h-screen bg-[#f8f9fa] text-slate-900 font-sans">
+        <div className="min-h-screen bg-[#f8f9fa] text-slate-900 font-sans pb-20">
             {/* --- HEADER --- */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -104,7 +130,7 @@ export default function CountrySelector() {
 
             <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* --- FILTERS BAR --- */}
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-10">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-10 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                     <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar">
                         {categories.map(cat => (
                             <button
@@ -117,17 +143,29 @@ export default function CountrySelector() {
                         ))}
                     </div>
 
-                    <div className="flex gap-3 w-full md:w-auto">
+                    <div className="flex gap-3 w-full md:w-auto items-center">
                         <input
                             type="date"
-                            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                            value={startDate}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             onChange={(e) => setStartDate(e.target.value)}
                         />
                         <input
                             type="date"
-                            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                            value={endDate}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             onChange={(e) => setEndDate(e.target.value)}
                         />
+
+                        {/* RESET BUTTON */}
+                        {(selectedCategory !== "" || startDate !== "" || endDate !== "" || selectedCountry !== "us") && (
+                            <button
+                                onClick={resetFilters}
+                                className="px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-1"
+                            >
+                                ✕ Reset
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -138,57 +176,62 @@ export default function CountrySelector() {
                             <div key={i} className="h-[400px] bg-slate-200 rounded-3xl" />
                         ))}
                     </div>
-                ) : error ? (
-                    <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 text-center font-medium">{error}</div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {articles.map((art, i) => (
-                            <article key={i} className="group bg-white rounded-[2rem] border border-slate-100 overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] hover:-translate-y-2 transition-all duration-500 flex flex-col">
-                                <div className="relative h-56 w-full overflow-hidden bg-slate-100">
-                                    {art.image_url ? (
-                                        <Image
-                                            src={art.image_url}
-                                            alt={art.title}
-                                            fill
-                                            className="object-cover group-hover:scale-110 transition-transform duration-700"
-                                            unoptimized
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-slate-300 font-bold uppercase tracking-widest text-xs">No Preview</div>
-                                    )}
-                                    <div className="absolute top-4 left-4">
-                                        <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-black uppercase text-blue-600 shadow-sm">
-                                            {art.category?.[0] || "Global"}
-                                        </span>
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                            {articles.length > 0 ? articles.map((art, i) => (
+                                <article key={i} className="group bg-white rounded-[2rem] border border-slate-100 overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] hover:-translate-y-2 transition-all duration-500 flex flex-col">
+                                    <div className="relative h-56 w-full overflow-hidden bg-slate-100">
+                                        {art.image_url ? (
+                                            <Image src={art.image_url} alt={art.title} fill className="object-cover group-hover:scale-110 transition-transform duration-700" unoptimized />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-slate-300 font-bold uppercase tracking-widest text-xs">No Preview</div>
+                                        )}
                                     </div>
+                                    <div className="p-6 flex flex-col flex-grow">
+                                        <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            <span>{art.source_id || "Global News"}</span>
+                                            <span>•</span>
+                                            <span>{new Date(art.pubDate).toLocaleDateString()}</span>
+                                        </div>
+                                        <h3 className="text-lg font-bold leading-tight text-slate-800 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">{art.title}</h3>
+                                        <p className="text-sm text-slate-500 line-clamp-3 mb-6 leading-relaxed">{art.description}</p>
+                                        <div className="mt-auto">
+                                            <a href={art.link} target="_blank" className="inline-flex items-center justify-center w-full py-3 bg-slate-50 text-slate-800 text-xs font-black rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">READ FULL STORY</a>
+                                        </div>
+                                    </div>
+                                </article>
+                            )) : (
+                                <div className="col-span-full py-20 text-center text-slate-400 font-medium">No news found for this filter.</div>
+                            )}
+                        </div>
+
+                        {articles.length > 0 && totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-3 mt-10">
+                                <button
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(prev => prev - 1)}
+                                    className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm"
+                                >
+                                    Previous
+                                </button>
+
+                                <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Page</span>
+                                    <span className="text-sm font-black text-blue-600">{currentPage}</span>
+                                    <span className="text-xs font-bold text-slate-400 uppercase">of {totalPages}</span>
                                 </div>
 
-                                <div className="p-6 flex flex-col flex-grow">
-                                    <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        <span>{art.source_id || "Global News"}</span>
-                                        <span>•</span>
-                                        <span>{new Date(art.pubDate).toLocaleDateString()}</span>
-                                    </div>
-                                    <h3 className="text-lg font-bold leading-tight text-slate-800 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                        {art.title}
-                                    </h3>
-                                    <p className="text-sm text-slate-500 line-clamp-3 mb-6 leading-relaxed">
-                                        {art.description || "Stay updated with the latest headlines and detailed reports from trusted sources worldwide..."}
-                                    </p>
-
-                                    <div className="mt-auto">
-                                        <a
-                                            href={art.link}
-                                            target="_blank"
-                                            className="inline-flex items-center justify-center w-full py-3 bg-slate-50 text-slate-800 text-xs font-black rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-300"
-                                        >
-                                            READ FULL STORY
-                                        </a>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
+                                <button
+                                    disabled={currentPage === totalPages}
+                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-all shadow-sm"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
         </div>
