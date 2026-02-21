@@ -109,10 +109,23 @@ export default function CountrySelector() {
             {/* --- HEADER --- */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200">D</div>
-                        <h1 className="text-2xl font-black tracking-tight text-slate-800">Developer<span className="text-blue-600">Look</span></h1>
-                    </div>
+                    {/* --- HEADER --- */}
+                    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+                        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+
+                            {/* লোগো এবং নিউজ রিলেটেড নাম */}
+                            <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200">
+                                    N
+                                </div>
+                                <h1 className="text-2xl font-black tracking-tight text-slate-800">
+                                    News<span className="text-blue-600">Pulse</span>
+                                </h1>
+                            </div>
+
+                         
+                        </div>
+                    </header>
 
                     <div className="hidden md:flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                         {countries.map(c => (
@@ -129,7 +142,7 @@ export default function CountrySelector() {
             </header>
 
             <main className="max-w-7xl mx-auto px-6 py-8">
-                {/* --- FILTERS BAR --- */}
+              
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-10 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                     <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar">
                         {categories.map(cat => (
@@ -169,7 +182,7 @@ export default function CountrySelector() {
                     </div>
                 </div>
 
-                {/* --- CONTENT GRID --- */}
+             
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
                         {[1, 2, 3, 4, 5, 6].map(i => (
